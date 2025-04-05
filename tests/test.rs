@@ -46,3 +46,20 @@ fn remove() {
 
     assert_eq!(sv.deref(), &[3, 4, 5]);
 }
+
+#[test]
+fn constructors() {
+    let mut i = 0;
+    let mut sv = StackVec::<i32, 10>::generate(|| {
+        i += 1;
+        i
+    });
+
+    sv.remove(5);
+    sv[1] = -1;
+
+    assert_eq!(sv.as_slice(), &[1, -1, 3, 4, 5, 7, 8, 9, 10]);
+
+    let sv = StackVec::<i32, 5>::filled(0);
+    assert_eq!(sv.as_slice(), &[0, 0, 0, 0, 0]);
+}

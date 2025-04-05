@@ -37,6 +37,7 @@ pub struct StackVec<T, const CAP: usize> {
 
 impl<T, const CAP: usize> StackVec<T, CAP> {
 
+    /// Creates a new empty StackVec
     #[inline]
     pub const fn new() -> Self {
         Self {
@@ -45,6 +46,64 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
         }
     }
 
+    /// Creates a new StackVec, filled with copies of the given value
+    ///
+    /// # Example
+    /// ```
+    /// use stack_vector::StackVec;
+    ///
+    /// let v = StackVec::<i32, 5>::filled(0);
+    /// assert_eq!(v.as_slice(), &[0, 0, 0, 0, 0]);
+    /// ```
+    #[inline(always)]
+    pub fn filled(val: T) -> Self
+    where
+        T: Clone
+    {
+        Self::generate(|| val.clone())
+    }
+
+    /// Creates a new StackVec, filling it using the given generator function
+    ///
+    /// # Example
+    /// ```
+    /// use stack_vector::StackVec;
+    ///
+    /// let mut n = 0;
+    /// let v = StackVec::<i32, 5>::generate(|| {
+    ///     n += 1;
+    ///     n
+    /// });
+    ///
+    /// assert_eq!(v.len(), 5);
+    /// assert_eq!(v.as_slice(), &[1, 2, 3, 4, 5]);
+    /// ```
+    pub fn generate<Gen>(mut generator: Gen) -> Self
+    where
+        Gen: FnMut() -> T
+    {
+        let mut s = Self::new();
+        for _ in 0..CAP {
+            unsafe {
+                /* SAFETY: We only call this function CAP
+                 * times, so it's never gonna fail */
+                s.push_unchecked(generator());
+            }
+        }
+        s
+    }
+
+    /// Creates a new StackVec from the given array of T
+    ///
+    /// # Example
+    /// ```
+    /// use stack_vector::StackVec;
+    ///
+    /// let v = StackVec::from_array([1, 2, 3, 4, 5]);
+    ///
+    /// assert_eq!(v.len(), 5);
+    /// assert_eq!(v.as_slice(), &[1, 2, 3, 4, 5]);
+    /// ```
     pub const fn from_array(arr: [T; CAP]) -> Self {
         /* We can't transmute the array due to rust's limitations.
          * We need to wrap the array into a ManuallyDrop, to avoid
@@ -96,6 +155,8 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
         }
     }
 
+    /// Pushes all the elements from the iterator into this StackVec.
+    #[inline]
     pub fn extend_from_iter<I>(&mut self, it: I)
     where
         I: IntoIterator<Item = T>
@@ -105,7 +166,7 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
         }
     }
 
-    /// Attempts to push all elements from the iterator into this StackVec.
+    /// Attempts to push all the elements from the iterator into this StackVec.
     ///
     /// # Errors
     /// If the iterator yields more elements that we can push, returns the
