@@ -1,6 +1,6 @@
 Stack-Vector
 ============
-Vec-like wrapper for an array allocated in the stack
+Vec-like wrapper for an array allocated on the stack
 
 == Documentation ==
 To read the library documentation run `cargo doc`

@@ -21,10 +21,12 @@
 //! assert_eq!(sv.as_slice(), &[1, 3, 4]);
 //! ```
 
-use std::iter::Peekable;
-use std::mem::{self, ManuallyDrop, MaybeUninit};
-use std::ops::{Deref, DerefMut};
-use std::ptr;
+#![no_std]
+
+use core::iter::Peekable;
+use core::mem::{self, ManuallyDrop, MaybeUninit};
+use core::ops::{Deref, DerefMut};
+use core::ptr;
 
 /// A [Vec]-like wrapper for an array.
 ///
@@ -123,7 +125,7 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
     #[inline]
     pub unsafe fn push_unchecked(&mut self, val: T) {
         unsafe {
-            self.inner.get_unchecked_mut(self.length).write(val);
+            self.as_mut_ptr().add(self.length).write(val);
         }
         self.length += 1;
     }
@@ -231,6 +233,7 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
 
     /// Removes the last element of the StackVec, and returns it.
     /// If empty, returns None
+    #[inline(always)]
     pub fn pop(&mut self) -> Option<T> {
         self.remove(self.length)
     }
@@ -255,6 +258,18 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
         unsafe {
             mem::transmute::<&mut [MaybeUninit<T>], &mut [T]>(slice)
         }
+    }
+
+    /// Returns this StackVec's buffer as a *const T.
+    #[inline(always)]
+    pub const fn as_ptr(&self) -> *const T {
+        self.inner.as_ptr() as *const T
+    }
+
+    /// Returns this StackVec's buffer as a *mut T.
+    #[inline(always)]
+    pub const fn as_mut_ptr(&mut self) -> *mut T {
+        self.inner.as_mut_ptr() as *mut T
     }
 
     /// Returns the capacity of this StackVec.
@@ -285,18 +300,21 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
 impl<T, const CAP: usize> Deref for StackVec<T, CAP> {
     type Target = [T];
 
+    #[inline(always)]
     fn deref(&self) -> &Self::Target {
         self.as_slice()
     }
 }
 
 impl<T, const CAP: usize> DerefMut for StackVec<T, CAP> {
+    #[inline(always)]
     fn deref_mut(&mut self) -> &mut [T] {
         self.as_slice_mut()
     }
 }
 
 impl<T, const CAP: usize> Default for StackVec<T, CAP> {
+    #[inline(always)]
     fn default() -> Self {
         Self::new()
     }
