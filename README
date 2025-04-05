@@ -1,0 +1,7 @@
+Stack-Vector
+============
+Vec-like wrapper for an array allocated in the stack
+
+== Documentation ==
+To read the library documentation run `cargo doc`
+or browse the online docs at https://docs.rs/stack-vector
