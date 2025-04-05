@@ -1,6 +1,6 @@
 [package]
 name = "stack-vector"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 description = "Vec-like wrapper for an array allocated on the stack"
 authors = ["Saúl Valdelvira <saul@saulv.es>"]

@@ -32,6 +32,7 @@ use core::ptr;
 ///
 /// This struct allows to push and pop to an array,
 /// treating it like a vector, but with no heap allocations.
+#[derive(Debug)]
 pub struct StackVec<T, const CAP: usize> {
     inner: [MaybeUninit<T>; CAP],
     length: usize,
@@ -338,5 +339,30 @@ impl<T, const CAP: usize> Drop for StackVec<T, CAP> {
                 }
             }
         }
+    }
+}
+
+impl<T: Clone, const CAP: usize> Clone for StackVec<T, CAP> {
+    fn clone(&self) -> Self {
+        let mut inner = [const { MaybeUninit::uninit() }; CAP];
+        let src = self.inner.as_ptr();
+        let dst = inner.as_mut_ptr();
+        unsafe { ptr::copy(src, dst, self.length); }
+        Self {
+            inner,
+            length: self.length,
+        }
+    }
+}
+
+impl<T: PartialEq, const CAP: usize> PartialEq for StackVec<T, CAP> {
+    fn eq(&self, other: &Self) -> bool {
+        self.as_slice().iter().eq(other.as_slice().iter())
+    }
+}
+
+impl<T: PartialOrd, const CAP: usize> PartialOrd for StackVec<T, CAP> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+        self.as_slice().iter().partial_cmp(other.as_slice().iter())
     }
 }
