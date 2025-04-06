@@ -3,7 +3,7 @@ extern crate test;
 use stack_vector::StackVec;
 use test::Bencher;
 
-const N: usize = 99999;
+const N: usize = 50;
 
 #[bench]
 fn bench_stack_vec(b: &mut Bencher) {
@@ -12,6 +12,7 @@ fn bench_stack_vec(b: &mut Bencher) {
         for i in 0..N {
             v.push(i);
         }
+        v.clear();
     })
 }
 
@@ -22,5 +23,6 @@ fn bench_vector(b: &mut Bencher) {
         for i in 0..N {
             v.push(i);
         }
+        v.clear();
     })
 }

@@ -25,14 +25,17 @@
 
 use core::iter::Peekable;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
-use core::ops::{Deref, DerefMut};
-use core::ptr;
+use core::ops::{Deref, DerefMut, RangeBounds};
+use core::ptr::{self, NonNull};
+
+use drain::Drain;
+
+mod drain;
 
 /// A [Vec]-like wrapper for an array.
 ///
 /// This struct allows to push and pop to an array,
 /// treating it like a vector, but with no heap allocations.
-#[derive(Debug)]
 pub struct StackVec<T, const CAP: usize> {
     inner: [MaybeUninit<T>; CAP],
     length: usize,
@@ -243,9 +246,9 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
     /// the currently allocated elements.
     pub const fn as_slice(&self) -> &[T] {
         let (slice, _) = self.inner.split_at(self.length);
-        /* SAFETY: The items in range 0..self.len will allways be
-         * initialized, so it's safe to reinterpret the slice of
-         * MaybeUninit to an slice of T */
+        /* SAFETY:
+         * - The items in range 0..self.len are initialized
+         * - MaybeUninit<T> and T have the same memory layout and alignment */
         unsafe {
             mem::transmute::<&[MaybeUninit<T>], &[T]>(slice)
         }
@@ -261,6 +264,19 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
         }
     }
 
+    /// Clears all the elements in this StackVec
+    pub fn clear(&mut self) {
+        let ptr = self.as_slice_mut() as *mut [T];
+        unsafe {
+            /* SAFETY
+             * We set length to 0 before calling drop_in_place.
+             * In case a Drop call fails, we're good.
+             */
+            self.length = 0;
+            ptr::drop_in_place(ptr);
+        }
+    }
+
     /// Returns this StackVec's buffer as a *const T.
     #[inline(always)]
     pub const fn as_ptr(&self) -> *const T {
@@ -271,6 +287,30 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
     #[inline(always)]
     pub const fn as_mut_ptr(&mut self) -> *mut T {
         self.inner.as_mut_ptr() as *mut T
+    }
+
+    pub fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> Drain<'_, T, CAP> {
+        use core::ops::Bound;
+
+        let start = match range.start_bound() {
+            Bound::Included(i) => *i,
+            Bound::Excluded(i) => *i + 1,
+            Bound::Unbounded => 0
+        };
+
+        let end = match range.end_bound() {
+            Bound::Included(i) => *i + 1,
+            Bound::Excluded(i) => *i,
+            Bound::Unbounded => self.length
+        };
+
+        /* SAFETY: A reference is always non null */
+        let sv = unsafe { NonNull::new_unchecked(self) };
+
+        let iter = self.as_slice()[start..end].iter();
+        let len = end - start;
+
+        Drain::new(sv, iter, start, len)
     }
 
     /// Returns the capacity of this StackVec.
@@ -331,13 +371,7 @@ impl<T, const CAP: usize> From<[T; CAP]> for StackVec<T, CAP> {
 impl<T, const CAP: usize> Drop for StackVec<T, CAP> {
     fn drop(&mut self) {
         if mem::needs_drop::<T>() {
-            for elem in &mut self.inner[0..self.length] {
-                unsafe {
-                    /* SAFETY: Elements [0, len) are initialized, and
-                     * must be dropped */
-                    elem.assume_init_drop();
-                }
-            }
+            self.clear();
         }
     }
 }

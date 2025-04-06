@@ -63,3 +63,15 @@ fn constructors() {
     let sv = StackVec::<i32, 5>::filled(0);
     assert_eq!(sv.as_slice(), &[0, 0, 0, 0, 0]);
 }
+
+#[test]
+fn drain() {
+    let mut sv = StackVec::<i32, 10>::from_array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+
+    let d = sv.drain(1..=3).collect::<Vec<_>>();
+    assert_eq!(d, [1, 2, 3]);
+
+    assert_eq!(sv.as_slice(), &[0, 4, 5, 6, 7, 8, 9]);
+
+    assert_eq!(sv.len(), 7);
+}
