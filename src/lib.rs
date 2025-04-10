@@ -42,13 +42,12 @@ pub struct StackVec<T, const CAP: usize> {
 }
 
 impl<T, const CAP: usize> StackVec<T, CAP> {
-
     /// Creates a new empty StackVec
     #[inline]
     pub const fn new() -> Self {
         Self {
-            inner: [const { MaybeUninit::uninit() }; CAP ],
-            length: 0
+            inner: [const { MaybeUninit::uninit() }; CAP],
+            length: 0,
         }
     }
 
@@ -64,7 +63,7 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
     #[inline(always)]
     pub fn filled(val: T) -> Self
     where
-        T: Clone
+        T: Clone,
     {
         Self::generate(|| val.clone())
     }
@@ -86,7 +85,7 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
     /// ```
     pub fn generate<Gen>(mut generator: Gen) -> Self
     where
-        Gen: FnMut() -> T
+        Gen: FnMut() -> T,
     {
         let mut s = Self::new();
         for _ in 0..CAP {
@@ -150,7 +149,7 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
     /// # Errors
     /// - If the StackVec if full, returns back the element
     ///   inside an Err variant.
-    pub fn try_push(&mut self, val: T) -> Result<(),T> {
+    pub fn try_push(&mut self, val: T) -> Result<(), T> {
         if self.length >= CAP {
             Err(val)
         } else {
@@ -165,7 +164,7 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
     #[inline]
     pub fn extend_from_iter<I>(&mut self, it: I)
     where
-        I: IntoIterator<Item = T>
+        I: IntoIterator<Item = T>,
     {
         for elem in it.into_iter() {
             self.push(elem)
@@ -177,14 +176,17 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
     /// # Errors
     /// If the iterator yields more elements that we can push, returns the
     /// iterator (turned into a [Peekable]) as an Err variant
-    pub fn try_extend_from_iter<I>(&mut self, it: I) -> Result<(), Peekable<<I as IntoIterator>::IntoIter>>
+    pub fn try_extend_from_iter<I>(
+        &mut self,
+        it: I,
+    ) -> Result<(), Peekable<<I as IntoIterator>::IntoIter>>
     where
-        I: IntoIterator<Item = T>
+        I: IntoIterator<Item = T>,
     {
         let mut it = it.into_iter().peekable();
         while it.peek().is_some() {
             if self.length >= CAP {
-                return Err(it)
+                return Err(it);
             }
             unsafe {
                 /* SAFETY:
@@ -215,11 +217,7 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
         unsafe {
             /* SAFETY: Elements [i + 1, len) are within bounds
              * for the buffer, and can be copied over */
-            ptr::copy(
-                ptr.add(i + 1),
-                ptr.add(i),
-                self.length - i - 1
-            );
+            ptr::copy(ptr.add(i + 1), ptr.add(i), self.length - i - 1);
         }
         self.length -= 1;
         ret
@@ -229,7 +227,7 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
     /// If the index is out of bounds, returns None
     pub fn remove(&mut self, i: usize) -> Option<T> {
         if i <= self.length {
-            unsafe { Some(self.remove_unchecked(i))  }
+            unsafe { Some(self.remove_unchecked(i)) }
         } else {
             None
         }
@@ -249,9 +247,7 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
         /* SAFETY:
          * - The items in range 0..self.len are initialized
          * - MaybeUninit<T> and T have the same memory layout and alignment */
-        unsafe {
-            mem::transmute::<&[MaybeUninit<T>], &[T]>(slice)
-        }
+        unsafe { mem::transmute::<&[MaybeUninit<T>], &[T]>(slice) }
     }
 
     /// Returns a mutable slice of T's from this StackVec, with
@@ -259,9 +255,7 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
     pub const fn as_slice_mut(&mut self) -> &mut [T] {
         let (slice, _) = self.inner.split_at_mut(self.length);
         /* SAFETY: Same as as_slice */
-        unsafe {
-            mem::transmute::<&mut [MaybeUninit<T>], &mut [T]>(slice)
-        }
+        unsafe { mem::transmute::<&mut [MaybeUninit<T>], &mut [T]>(slice) }
     }
 
     /// Clears all the elements in this StackVec
@@ -295,13 +289,13 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
         let start = match range.start_bound() {
             Bound::Included(i) => *i,
             Bound::Excluded(i) => *i + 1,
-            Bound::Unbounded => 0
+            Bound::Unbounded => 0,
         };
 
         let end = match range.end_bound() {
             Bound::Included(i) => *i + 1,
             Bound::Excluded(i) => *i,
-            Bound::Unbounded => self.length
+            Bound::Unbounded => self.length,
         };
 
         /* SAFETY: A reference is always non null */
@@ -317,25 +311,35 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
     /// This is just a convenience function, since the
     /// capacity is a const generic argument.
     #[inline(always)]
-    pub const fn capacity(&self) -> usize { CAP }
+    pub const fn capacity(&self) -> usize {
+        CAP
+    }
 
     /// Returns the remaining capacity of this StackVec.
     /// This is, how many more elements can we store in it.
     #[inline(always)]
-    pub const fn remaining_capacity(&self) -> usize { CAP - self.length }
+    pub const fn remaining_capacity(&self) -> usize {
+        CAP - self.length
+    }
 
     /// Returns the length of this StackVec, this is, the
     /// number of elements "pushed" into it.
     #[inline(always)]
-    pub const fn len(&self) -> usize { self.length }
+    pub const fn len(&self) -> usize {
+        self.length
+    }
 
     /// Returns true if the length is 0
     #[inline(always)]
-    pub const fn is_empty(&self) -> bool { self.length == 0 }
+    pub const fn is_empty(&self) -> bool {
+        self.length == 0
+    }
 
     /// Returns true if no more elements can be pushed into this StackVec
     #[inline(always)]
-    pub const fn is_full(&self) -> bool { self.length == CAP }
+    pub const fn is_full(&self) -> bool {
+        self.length == CAP
+    }
 }
 
 impl<T, const CAP: usize> Deref for StackVec<T, CAP> {
@@ -381,7 +385,9 @@ impl<T: Clone, const CAP: usize> Clone for StackVec<T, CAP> {
         let mut inner = [const { MaybeUninit::uninit() }; CAP];
         let src = self.inner.as_ptr();
         let dst = inner.as_mut_ptr();
-        unsafe { ptr::copy(src, dst, self.length); }
+        unsafe {
+            ptr::copy(src, dst, self.length);
+        }
         Self {
             inner,
             length: self.length,

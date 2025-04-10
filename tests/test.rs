@@ -23,7 +23,7 @@ fn push() {
     assert_eq!(sv.remaining_capacity(), 0);
     assert_eq!(sv.try_push(-1), Err(-1));
 
-    assert_eq!(sv.as_slice(), &[1,2,3,4,5,6,7,8,9,10]);
+    assert_eq!(sv.as_slice(), &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 }
 
 #[test]

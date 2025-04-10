@@ -1,8 +1,8 @@
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem;
-use core::slice;
 use core::ptr::{self, NonNull};
+use core::slice;
 
 use crate::StackVec;
 
@@ -15,14 +15,18 @@ pub struct Drain<'a, T: 'a, const CAP: usize> {
 }
 
 impl<'a, T: 'a, const CAP: usize> Drain<'a, T, CAP> {
-    pub (super) fn new(
+    pub(super) fn new(
         sv: NonNull<StackVec<T, CAP>>,
         iter: slice::Iter<'a, T>,
         start: usize,
         len: usize,
     ) -> Self {
         Self {
-            sv, iter, start, len, _marker: PhantomData
+            sv,
+            iter,
+            start,
+            len,
+            _marker: PhantomData,
         }
     }
 }
@@ -31,9 +35,7 @@ impl<T, const CAP: usize> Iterator for Drain<'_, T, CAP> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter
-            .next()
-            .map(|p| unsafe { ptr::read(p) })
+        self.iter.next().map(|p| unsafe { ptr::read(p) })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -43,13 +45,11 @@ impl<T, const CAP: usize> Iterator for Drain<'_, T, CAP> {
 
 impl<T, const CAP: usize> DoubleEndedIterator for Drain<'_, T, CAP> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.iter
-            .next_back()
-            .map(|p| unsafe { ptr::read(p) })
+        self.iter.next_back().map(|p| unsafe { ptr::read(p) })
     }
 }
 
-impl<T, const CAP: usize> FusedIterator for Drain<'_, T, CAP> { }
+impl<T, const CAP: usize> FusedIterator for Drain<'_, T, CAP> {}
 
 impl<T, const CAP: usize> ExactSizeIterator for Drain<'_, T, CAP> {
     fn len(&self) -> usize {
