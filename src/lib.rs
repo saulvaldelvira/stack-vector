@@ -245,9 +245,9 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
     pub const fn as_slice(&self) -> &[T] {
         let (slice, _) = self.inner.split_at(self.length);
         /* SAFETY:
-         * - The items in range 0..self.len are initialized
+         * - The caller guarantees that items in range 0..self.len are initialized
          * - MaybeUninit<T> and T have the same memory layout and alignment */
-        unsafe { mem::transmute::<&[MaybeUninit<T>], &[T]>(slice) }
+        unsafe { &*(slice as *const [MaybeUninit<T>] as *const [T]) }
     }
 
     /// Returns a mutable slice of T's from this StackVec, with
@@ -255,7 +255,7 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
     pub const fn as_slice_mut(&mut self) -> &mut [T] {
         let (slice, _) = self.inner.split_at_mut(self.length);
         /* SAFETY: Same as as_slice */
-        unsafe { mem::transmute::<&mut [MaybeUninit<T>], &mut [T]>(slice) }
+        unsafe { &mut *(slice as *mut [MaybeUninit<T>] as *mut [T]) }
     }
 
     /// Clears all the elements in this StackVec
@@ -283,6 +283,8 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
         self.inner.as_mut_ptr() as *mut T
     }
 
+    /// Drains elements in the given range from this StackVec.
+    /// Creates a [Drain] object, that iterates over the removed elements.
     pub fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> Drain<'_, T, CAP> {
         use core::ops::Bound;
 
@@ -305,6 +307,20 @@ impl<T, const CAP: usize> StackVec<T, CAP> {
         let len = end - start;
 
         Drain::new(sv, iter, start, len)
+    }
+
+    /// Tries to convert this StackVector into an array of T.
+    ///
+    /// # Errors
+    /// If the inner array is not fully initialized, this
+    /// is, if the length is not equal to the capacity
+    pub fn into_array(self) -> Result<[T; CAP], Self> {
+        if self.length == CAP {
+            let md = ManuallyDrop::new(self);
+            unsafe { Ok(mem::transmute_copy(&md.inner)) }
+        } else {
+            Err(self)
+        }
     }
 
     /// Returns the capacity of this StackVec.
